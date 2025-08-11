@@ -138,7 +138,6 @@ int main(int argc, char* argv[]) {
         getchar();
 
         // printf("Command entered: %s (remove this debug output later)\n", line);
-        /* END: TAKING INPUT */
 
         line[strlen(line)] = '\n'; //terminate with new line
         tokens = tokenize(line);
