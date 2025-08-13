@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKEN_SIZE 64
@@ -13,6 +14,7 @@
 int child_process[64];
 volatile int child_process_idx = 0; 
 int foreground_pid = -1;
+int pipe_fd[2];
 
 /* 
  * Splits the string by space and returns the array of tokens
@@ -55,10 +57,36 @@ void update_child_process_array(int process_id) {
 }
 
 void sigint_handler(int signum) {
-    printf("sighandler called");
     kill(-foreground_pid, SIGINT); // send this signal to all the proess in the process group
 }
 
+void execute_pipe_command(char** command, int command_number) {
+    pid_t fork_result = fork();
+    if (fork_result == 0) {
+        if (command_number == 1) {
+            // first command connect stdout to write fd
+            close(pipe_fd[0]);
+            dup2(pipe_fd[1], STDOUT_FILENO);
+            close(pipe_fd[1]); // Close this as dup2 have made a new fd
+        } else if (command_number == -1) {
+            // last command connect stdin to read fd
+            close(pipe_fd[1]);
+            dup2(pipe_fd[0], STDIN_FILENO);
+            close(pipe_fd[0]);
+        } else {
+            dup2(pipe_fd[0], STDIN_FILENO);
+            dup2(pipe_fd[1], STDOUT_FILENO);
+            close(pipe_fd[0]);
+            close(pipe_fd[1]);
+        }
+        execvp(command[0], command);
+        perror("Exec failed");
+        exit(EXIT_FAILURE);
+    } else {
+        close(pipe_fd[1]); // The reason I am closing the write end because I dont want the other process think that some process still wants to write something in the pipe and hence will be waiting for EOF.
+        waitpid(fork_result, NULL, 0);
+    }
+}
 
 void execute_command(char** tokens, int no_of_tokens) {
     // for (int i = 0; tokens[i] != NULL; i++) printf("%s\n", tokens[i]);
@@ -75,11 +103,13 @@ void execute_command(char** tokens, int no_of_tokens) {
         }
     } 
     else if(strcmp(tokens[0], "exit") == 0) {
-        // send kill signal to all process
-        for (int i = 0; i < child_process_idx; i++) kill(child_process[i], SIGKILL);
         kill(-getpid(), SIGKILL);
     }
     else if(no_of_tokens >= 3 && strcmp(tokens[no_of_tokens - 2], "&") == 0) {
+        if (child_process_idx >= 64) {
+            perror("Background process limit reached");
+            return;
+        }
         // process to run in background
         tokens[no_of_tokens - 2] = NULL;
         pid_t fork_result = fork();
@@ -104,7 +134,7 @@ void execute_command(char** tokens, int no_of_tokens) {
             }
         } else if (fork_result > 0) {
             foreground_pid = fork_result;
-            setpgid(fork_result, fork_result);
+            setpgid(fork_result, fork_result); // not needed, just for safety
             waitpid(fork_result, NULL, 0);
             // foreground_pid = -1;
             signal(SIGINT, SIG_IGN);
@@ -115,8 +145,10 @@ void execute_command(char** tokens, int no_of_tokens) {
 int main(int argc, char* argv[]) {
     char  line[MAX_INPUT_SIZE];            
     char  **tokens;              
-    int i;
+    int i = 0;
+    bool pipe_command = false;
     signal(SIGINT, SIG_IGN);
+    pipe(pipe_fd);
     // signal(SIGINT, sigint_handler);
 
     while(1) {
@@ -148,20 +180,31 @@ int main(int argc, char* argv[]) {
 
         char** command = (char**) malloc(sizeof(char*) * MAX_NUM_TOKENS);
         int command_index = 0;
+        int pipe_command_number = 0;
+        pipe_command = false;
         for  (int i = 0; tokens[i] != NULL; i++) {
             command[command_index] = (char*) malloc(sizeof(char) * MAX_TOKEN_SIZE);
-            if (strcmp(tokens[i], "&&") == 0 || strcmp(tokens[i], "|") == 0) {
+            if (strcmp(tokens[i], "&&") == 0) {
                 command[command_index] = NULL;
                 execute_command(command, command_index + 1);
+                command_index = 0;
+            } else if (strcmp(tokens[i], "|") == 0) {
+                pipe_command = true;
+                command[command_index] = NULL;
+                pipe_command_number++;
+                execute_pipe_command(command, pipe_command_number);
                 command_index = 0;
             }
             else command[command_index++] = tokens[i];
         }
 
-        // last command
-        command[command_index] = NULL;
-        execute_command(command, command_index + 1);
-
+        if (pipe_command == true) {
+            command[command_index] = NULL;
+            execute_pipe_command(command, -1);
+        } else {
+            command[command_index] = NULL;
+            execute_command(command, command_index + 1);
+        }
 
         // printf("No of child process running : %d \n", child_process_idx);
         // for (int i = 0; i < child_process_idx; i++) printf("%d, ", child_process[i]);
