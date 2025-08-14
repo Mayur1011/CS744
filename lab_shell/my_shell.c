@@ -11,10 +11,10 @@
 #define MAX_TOKEN_SIZE 64
 #define MAX_NUM_TOKENS 64
 
-int child_process[64];
+int child_process[64] = {0};
 volatile int child_process_idx = 0; 
 int foreground_pid = -1;
-int pipe_fd[2];
+int pipe_fd[2] = {-1};
 
 /* 
  * Splits the string by space and returns the array of tokens
@@ -60,32 +60,99 @@ void sigint_handler(int signum) {
     kill(-foreground_pid, SIGINT); // send this signal to all the proess in the process group
 }
 
-void execute_pipe_command(char** command, int command_number) {
-    pid_t fork_result = fork();
-    if (fork_result == 0) {
-        if (command_number == 1) {
-            // first command connect stdout to write fd
-            close(pipe_fd[0]);
-            dup2(pipe_fd[1], STDOUT_FILENO);
-            close(pipe_fd[1]); // Close this as dup2 have made a new fd
-        } else if (command_number == -1) {
-            // last command connect stdin to read fd
-            close(pipe_fd[1]);
-            dup2(pipe_fd[0], STDIN_FILENO);
-            close(pipe_fd[0]);
-        } else {
-            dup2(pipe_fd[0], STDIN_FILENO);
-            dup2(pipe_fd[1], STDOUT_FILENO);
-            close(pipe_fd[0]);
-            close(pipe_fd[1]);
+// void execute_pipe_command(char** command, int command_number) {
+//     pid_t fork_result = fork();
+//     if (fork_result == 0) {
+//         if (command_number == 1) {
+//             // first command connect stdout to write fd
+//             dup2(pipe_fd[1], STDOUT_FILENO);
+//             close(pipe_fd[0]);
+//             close(pipe_fd[1]); // Close this as dup2 have made a new fd
+//         } else if (command_number == -1) {
+//             // last command connect stdin to read fd
+//             dup2(pipe_fd[0], STDIN_FILENO);
+//             close(pipe_fd[1]);
+//             close(pipe_fd[0]);
+//         } else {
+//             dup2(pipe_fd[0], STDIN_FILENO);
+//             dup2(pipe_fd[1], STDOUT_FILENO);
+//             close(pipe_fd[0]);
+//             close(pipe_fd[1]);
+//         }
+//         execvp(command[0], command);
+//         perror("Exec failed");
+//         exit(EXIT_FAILURE);
+//     } else {
+//         close(pipe_fd[1]); // The reason I am closing the write end because I dont want the other process think that some process still wants to write something in the pipe and hence will be waiting for EOF.
+//         // close(pipe_fd[0]);
+//         waitpid(fork_result, NULL, 0);
+//     }
+// }
+
+void execute_pipe_command(char ***commands, int no_of_commands) {
+
+    int prev_read_fd = -1; // This is needed as we are reading the output of prev command(stored in previous pipe) as input for current command. 
+
+    int c_process[no_of_commands];
+    // printf("%d\n", no_of_commands);
+    for (int i = 0; i < no_of_commands; i++) {
+
+        // for (int j = 0; commands[i][j] != NULL; j++) printf("%s ", commands[i][j]);
+        // printf("%d\n", no_of_commands);
+
+        int pipe_fd[2] = {-1, -1};
+        if (i < no_of_commands - 1) {
+            if(pipe(pipe_fd) == -1) {
+                perror("Pipe failed");
+                exit(EXIT_FAILURE);
+            };
         }
-        execvp(command[0], command);
-        perror("Exec failed");
-        exit(EXIT_FAILURE);
-    } else {
-        close(pipe_fd[1]); // The reason I am closing the write end because I dont want the other process think that some process still wants to write something in the pipe and hence will be waiting for EOF.
-        waitpid(fork_result, NULL, 0);
+        
+        pid_t fork_result = fork();
+
+        if (fork_result < 0) {
+            perror("Fork failed");
+            exit(EXIT_FAILURE);
+        }
+
+        if (fork_result == 0) {
+            // connect previous read fd to STDIN
+            if (i > 0) {
+                if (dup2(prev_read_fd, STDIN_FILENO) == -1) { 
+                    perror("dup error"); 
+                    exit(EXIT_FAILURE);
+                }
+            }
+
+            // connect current write fd to STDOUT. As the current command will put its output in stdout but we want it to be stored in pipe.
+            if (i < no_of_commands - 1) {if (dup2(pipe_fd[1], STDOUT_FILENO) == -1) { 
+                perror("dup error"); 
+                exit(EXIT_FAILURE);
+            }}
+
+            // Now as we have made duplicated fds, we can close all other fds
+            if(prev_read_fd != -1) close(prev_read_fd);
+            if(pipe_fd[0] != -1) close(pipe_fd[0]);
+            if(pipe_fd[1] != -1) close(pipe_fd[1]);
+
+            execvp(commands[i][0], commands[i]);
+            perror("Exec failed");
+            exit(EXIT_FAILURE);
+        }
+
+        // waitpid(fork_result, NULL, 0);
+
+        // Close the write end from parent otherwise the child might think that parent has to write something
+        if (pipe_fd[1] != -1) close(pipe_fd[1]);
+
+        // Close the prev_read_fd and also update it
+        if (prev_read_fd != -1) close(prev_read_fd);
+        prev_read_fd = pipe_fd[0];
+
+        c_process[i] = fork_result;
     }
+
+    for(int i = 0; i < no_of_commands; i++) waitpid(c_process[i], NULL, 0);
 }
 
 void execute_command(char** tokens, int no_of_tokens) {
@@ -118,7 +185,7 @@ void execute_command(char** tokens, int no_of_tokens) {
         if(fork_result == 0) {
             if(execvp(tokens[0], tokens) == -1){
                 perror("Command not found");
-                exit(EXIT_SUCCESS);
+                _exit(EXIT_SUCCESS);
             }
         } 
     } 
@@ -130,7 +197,7 @@ void execute_command(char** tokens, int no_of_tokens) {
             setpgid(0, 0); // new process group for child
             if (execvp(tokens[0], tokens) == -1) {
                 fprintf(stderr, "Command not found\n");
-                exit(EXIT_SUCCESS);
+                _exit(EXIT_SUCCESS);
             }
         } else if (fork_result > 0) {
             foreground_pid = fork_result;
@@ -179,6 +246,7 @@ int main(int argc, char* argv[]) {
         // }
 
         char** command = (char**) malloc(sizeof(char*) * MAX_NUM_TOKENS);
+        char*** pipe_commands = (char***) malloc(sizeof(char*) * MAX_NUM_TOKENS);
         int command_index = 0;
         int pipe_command_number = 0;
         pipe_command = false;
@@ -191,8 +259,10 @@ int main(int argc, char* argv[]) {
             } else if (strcmp(tokens[i], "|") == 0) {
                 pipe_command = true;
                 command[command_index] = NULL;
-                pipe_command_number++;
-                execute_pipe_command(command, pipe_command_number);
+                pipe_commands[pipe_command_number++] = command;
+                // char ** temp = (char**) malloc(sizeof(char*) * MAX_NUM_TOKENS);
+                // command = temp;
+                command = (char**) malloc(sizeof(char*) * MAX_NUM_TOKENS);
                 command_index = 0;
             }
             else command[command_index++] = tokens[i];
@@ -200,7 +270,10 @@ int main(int argc, char* argv[]) {
 
         if (pipe_command == true) {
             command[command_index] = NULL;
-            execute_pipe_command(command, -1);
+            pipe_commands[pipe_command_number++] = command;
+            pipe_commands[pipe_command_number] = NULL;
+            execute_pipe_command(pipe_commands, pipe_command_number);
+
         } else {
             command[command_index] = NULL;
             execute_command(command, command_index + 1);
