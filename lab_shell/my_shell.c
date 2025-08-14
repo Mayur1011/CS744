@@ -260,9 +260,7 @@ int main(int argc, char* argv[]) {
                 pipe_command = true;
                 command[command_index] = NULL;
                 pipe_commands[pipe_command_number++] = command;
-                // char ** temp = (char**) malloc(sizeof(char*) * MAX_NUM_TOKENS);
-                // command = temp;
-                command = (char**) malloc(sizeof(char*) * MAX_NUM_TOKENS);
+                command = (char**) malloc(sizeof(char*) * MAX_NUM_TOKENS); // command pointing to new space
                 command_index = 0;
             }
             else command[command_index++] = tokens[i];
