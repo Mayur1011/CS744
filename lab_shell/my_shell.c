@@ -180,8 +180,8 @@ void execute_command(char** tokens, int no_of_tokens) {
         // process to run in background
         tokens[no_of_tokens - 2] = NULL;
         pid_t fork_result = fork();
-        if (child_process_idx < 64) { child_process[child_process_idx++] = fork_result; }
         if(fork_result == -1) fprintf(stderr, "Fork failed\n"); 
+        if (child_process_idx < 64) { child_process[child_process_idx++] = fork_result; }
         if(fork_result == 0) {
             if(execvp(tokens[0], tokens) == -1){
                 perror("Command not found");
