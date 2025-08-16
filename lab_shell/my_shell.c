@@ -1,15 +1,17 @@
 #include <signal.h>
-#include  <stdio.h>
-#include  <sys/types.h>
+#include <stdio.h>
+#include <sys/types.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <fcntl.h>
 
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKEN_SIZE 64
 #define MAX_NUM_TOKENS 64
+#define CAT_BUFF_SIZE 1024
 
 int child_process[64] = {0};
 volatile int child_process_idx = 0; 
@@ -31,12 +33,12 @@ char **tokenize(char *line) {
         if (readChar == ' ' || readChar == '\n' || readChar == '\t'){
             token[tokenIndex] = '\0';
             // printf("%s\n", token);
-            if (tokenIndex != 0){
+            if (tokenIndex != 0){// {{{
                 tokens[tokenNo] = (char*) malloc(MAX_TOKEN_SIZE * sizeof(char));
                 strcpy(tokens[tokenNo++], token);
                 tokenIndex = 0; 
             }
-        } else {
+        } else {// }}}
             token[tokenIndex++] = readChar;
         }
     }
@@ -90,7 +92,6 @@ void sigint_handler(int signum) {
 // }
 
 void execute_pipe_command(char ***commands, int no_of_commands) {
-
     int prev_read_fd = -1; // This is needed as we are reading the output of prev command(stored in previous pipe) as input for current command. 
 
     int c_process[no_of_commands];
@@ -156,6 +157,7 @@ void execute_pipe_command(char ***commands, int no_of_commands) {
 }
 
 void execute_command(char** tokens, int no_of_tokens) {
+    // no_of_tokens including NULL 
     // for (int i = 0; tokens[i] != NULL; i++) printf("%s\n", tokens[i]);
     if (tokens[0] == NULL) {
         // fprintf(stderr, "no such command\n");
@@ -171,6 +173,49 @@ void execute_command(char** tokens, int no_of_tokens) {
     } 
     else if(strcmp(tokens[0], "exit") == 0) {
         kill(-getpid(), SIGKILL);
+    } 
+    else if(strcmp(tokens[0], "cat") == 0) {
+        char buf[CAT_BUFF_SIZE];
+        size_t bytes_read;
+        int buf_idx = 0;
+        char tempchar;
+        if (no_of_tokens == 2) {
+            while(1) {
+                while(buf_idx < CAT_BUFF_SIZE) {
+                    bytes_read = read(0, &tempchar, 1);
+                    if (bytes_read == 0) {
+                        return;
+                    }
+                    buf[buf_idx] = tempchar;
+                    if(tempchar == '\n') {
+                        write(1, buf, buf_idx + 1);
+                        buf_idx = 0;
+                        break;
+                    }
+                    buf_idx += 1;
+                    if(buf_idx == CAT_BUFF_SIZE || bytes_read == 0) {
+                        write(1, buf, buf_idx + 1);
+                        buf_idx = 0;
+                    }
+                }
+            }
+            return;
+        }
+        int open_fd = open(tokens[1], O_RDONLY);
+        if (open_fd == -1) {
+            perror("Error while opening the file");
+            return;
+        }
+
+        while((bytes_read = read(open_fd, buf, sizeof(buf))) > 0) {
+            size_t bytes_written = write(1, buf, bytes_read);
+            if (bytes_read != bytes_written) {
+                perror("write error");
+                close(open_fd);
+                exit(EXIT_FAILURE);
+            }
+        } 
+        close(open_fd);
     }
     else if(no_of_tokens >= 3 && strcmp(tokens[no_of_tokens - 2], "&") == 0) {
         if (child_process_idx >= 64) {
