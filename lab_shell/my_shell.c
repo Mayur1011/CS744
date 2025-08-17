@@ -11,7 +11,7 @@
 #define MAX_INPUT_SIZE 1024
 #define MAX_TOKEN_SIZE 64
 #define MAX_NUM_TOKENS 64
-#define CAT_BUFF_SIZE 1024
+#define CAT_BUFF_SIZE 10
 
 int child_process[64] = {0};
 volatile int child_process_idx = 0;
@@ -214,8 +214,6 @@ void execute_command(char **tokens, int no_of_tokens)
     {
         char buf[CAT_BUFF_SIZE];
         size_t bytes_read;
-        int buf_idx = 0;
-        char tempchar;
         if (no_of_tokens == 2)
         {
             while ((bytes_read = read(0, buf, sizeof(buf))) > 0)
@@ -230,24 +228,27 @@ void execute_command(char **tokens, int no_of_tokens)
             return;
         }
 
-        int open_fd = open(tokens[1], O_RDONLY);
-        if (open_fd == -1)
+        for (int i = 1; i < no_of_tokens - 1; i++)
         {
-            perror("Error while opening the file");
-            return;
-        }
-
-        while ((bytes_read = read(open_fd, buf, sizeof(buf))) > 0)
-        {
-            size_t bytes_written = write(1, buf, bytes_read);
-            if (bytes_read != bytes_written)
+            int open_fd = open(tokens[i], O_RDONLY);
+            if (open_fd == -1)
             {
-                perror("write error");
-                close(open_fd);
-                exit(EXIT_FAILURE);
+                perror("Error while opening the file");
+                continue;
             }
+
+            while ((bytes_read = read(open_fd, buf, sizeof(buf))) > 0)
+            {
+                size_t bytes_written = write(1, buf, bytes_read);
+                if (bytes_read != bytes_written)
+                {
+                    perror("write error");
+                    close(open_fd);
+                    return;
+                }
+            }
+            close(open_fd);
         }
-        close(open_fd);
     }
     else if (no_of_tokens >= 3 && strcmp(tokens[no_of_tokens - 2], "&") == 0)
     {
