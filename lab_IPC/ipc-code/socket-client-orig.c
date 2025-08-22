@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
 
     /* ask user for input */
     printf("Please enter the message: ");
-    bzero(buffer,256);
-    fgets(buffer,255,stdin);
+    bzero(buffer, 256);
+    fgets(buffer, 255, stdin);
 
     /* send user message to server */
     printf("Sending data...\n");

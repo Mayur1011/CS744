@@ -26,10 +26,8 @@ char **tokenize(char *line)
     char **tokens = (char **)malloc(MAX_NUM_TOKENS * sizeof(char *));
     char *token = (char *)malloc(MAX_TOKEN_SIZE * sizeof(char));
     int i, tokenIndex = 0, tokenNo = 0;
-
     for (i = 0; i < strlen(line); i++)
     {
-
         char readChar = line[i];
 
         if (readChar == ' ' || readChar == '\n' || readChar == '\t')
@@ -222,7 +220,7 @@ void execute_command(char **tokens, int no_of_tokens)
                 if (bytes_read != bytes_written)
                 {
                     perror("write error");
-                    exit(EXIT_FAILURE);
+                    return;
                 }
             }
             return;
