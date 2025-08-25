@@ -85,7 +85,7 @@ int main () {
         signal(SIGUSR2, parent_can_send); 
         for (int i = 0; i < LENGTH; i++) {
 
-            while(!canReceive) {;} 
+            while(!canReceive) pause(); 
             // printf("[Parent] Sending %c to child\n",tmp[i]);
             if (tmp[i] == '1') {
                 // TODO : Add mechanism to send 1 to child

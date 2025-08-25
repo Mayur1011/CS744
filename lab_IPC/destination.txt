@@ -1,0 +1,3 @@
+This is source text file fd:0
+This is destination text file fd:1
+The only true limit 
