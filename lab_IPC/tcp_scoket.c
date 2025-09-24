@@ -12,7 +12,6 @@ int main(void)
 {
 
     int socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-
     if (socket_fd < 0)
     {
         perror("socket");
@@ -23,9 +22,13 @@ int main(void)
 
     struct sockaddr_un server_address;
 
+    // bzero(&server_address, sizeof(struct sockaddr_un));
     memset(&server_address, 0, sizeof(struct sockaddr_un));
+
     server_address.sun_family = AF_UNIX;
+
     strncpy(server_address.sun_path, SOCKET_NAME, sizeof(server_address.sun_path) - 1);
+    // strcpy(server_address.sun_path, SOCKET_NAME);
 
     if (bind(socket_fd, (struct sockaddr *)&server_address, sizeof(server_address)) < 0)
     {

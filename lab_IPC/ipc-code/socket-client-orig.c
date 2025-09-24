@@ -23,13 +23,13 @@ int main(int argc, char *argv[])
 
     /* create socket, get sockfd handle */
     sockfd = socket(AF_UNIX, SOCK_DGRAM, 0);
-    if (sockfd < 0) 
+    if (sockfd < 0)
         error("ERROR opening socket");
 
     /* fill in server address */
-    bzero((char *) &serv_addr, sizeof(serv_addr));
+    bzero((char *)&serv_addr, sizeof(serv_addr));
     serv_addr.sun_family = AF_UNIX;
-    strcpy(serv_addr.sun_path, SOCK_PATH); 
+    strcpy(serv_addr.sun_path, SOCK_PATH);
 
     /* ask user for input */
     printf("Please enter the message: ");
@@ -40,8 +40,8 @@ int main(int argc, char *argv[])
     printf("Sending data...\n");
     n = sendto(sockfd, buffer, strlen(buffer), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
 
-    if (n < 0) 
-         error("ERROR writing to socket");
+    if (n < 0)
+        error("ERROR writing to socket");
 
     close(sockfd);
     return 0;

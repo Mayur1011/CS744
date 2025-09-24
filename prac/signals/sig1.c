@@ -36,7 +36,7 @@ int main()
     {
         signal(SIGUSR1, parent_signal_handler);
         sleep(1);
-        if (kill(child, SIGUSR1) == -1)
+        if (kill(child, SIGUSR1) < 0)
         {
             perror("kill failed");
             exit(EXIT_FAILURE);
