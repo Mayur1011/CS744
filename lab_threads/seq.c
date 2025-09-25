@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #define N 3
+
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond0 = PTHREAD_COND_INITIALIZER;
 pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
@@ -14,7 +15,6 @@ void* print_thread_message(void* arg) {
 
     while (1) {
 
-        // printf("Thread %d is waiting\n", thread_num);
         pthread_cond_wait(thread_num == 0 ? &cond0 : thread_num == 1 ? &cond1 : &cond2, &lock);
 
         printf("I am thread %d\n", thread_num);
