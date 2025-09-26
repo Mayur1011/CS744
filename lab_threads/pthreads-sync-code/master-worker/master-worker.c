@@ -16,55 +16,66 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t master = PTHREAD_COND_INITIALIZER;
 pthread_cond_t worker = PTHREAD_COND_INITIALIZER;
 
-void print_produced(int num, int master) {
+void print_produced(int num, int master)
+{
     printf("Produced %d by master %d\n", num, master);
 }
 
-void print_consumed(int num, int worker) {
+void print_consumed(int num, int worker)
+{
     printf("Consumed %d by worker %d\n", num, worker);
 }
 
-
-//produce items and place in buffer
-//modify code below to synchronize correctly
+// produce items and place in buffer
+// modify code below to synchronize correctly
 void *generate_requests_loop(void *data)
 {
     int thread_id = *((int *)data);
 
-    while(1)
+    while (1)
     {
         pthread_mutex_lock(&lock);
-        while(curr_buf_size == max_buf_size) {
+        while (curr_buf_size == max_buf_size)
+        {
             pthread_cond_wait(&master, &lock);
         }
 
-        if (item_to_produce < total_items) {
+        if (item_to_produce < total_items)
+        {
             buffer[curr_buf_size++] = item_to_produce;
             print_produced(item_to_produce, thread_id);
             item_to_produce++;
         }
 
         pthread_cond_broadcast(&worker);
-        pthread_cond_broadcast(&master);
+        pthread_cond_signal(&master);
         pthread_mutex_unlock(&lock);
 
-        if (item_to_produce >= total_items) break;
+        if (item_to_produce >= total_items)
+            break;
     }
     return 0;
 }
 
-//write function to be run by worker threads
-//ensure that the workers call the function print_consumed when they consume an item
+// write function to be run by worker threads
+// ensure that the workers call the function print_consumed when they consume an item
 
 int worker_turn = 0;
-void* consume_item(void* data) {
-    int thread_id = *((int*) data);
+void *consume_item(void *data)
+{
+    int thread_id = *((int *)data);
 
-    while(1) {
+    while (1)
+    {
         pthread_mutex_lock(&lock);
-        while(worker_turn != thread_id) {
+        while (worker_turn != thread_id)
+        {
             pthread_cond_wait(&worker, &lock);
-        } while(curr_buf_size == 0) { if (item_to_produce >= total_items) {
+        }
+        while (curr_buf_size == 0)
+        {
+            if (item_to_produce >= total_items)
+            {
                 worker_turn = (worker_turn + 1) % num_workers;
                 pthread_cond_broadcast(&worker);
                 pthread_mutex_unlock(&lock);
@@ -76,7 +87,7 @@ void* consume_item(void* data) {
         print_consumed(item, thread_id);
         worker_turn = (worker_turn + 1) % num_workers;
 
-        pthread_cond_broadcast(&master);
+        pthread_cond_signal(&master);
         pthread_cond_broadcast(&worker);
         pthread_mutex_unlock(&lock);
     }
@@ -93,44 +104,49 @@ int main(int argc, char *argv[])
 
     int i;
 
-    if (argc < 5) {
+    if (argc < 5)
+    {
         printf("./master-worker #total_items #max_buf_size #num_workers #masters e.g. ./exe 10000 1000 4 3\n");
         exit(1);
     }
-    else {
+    else
+    {
         total_items = atoi(argv[1]);
         max_buf_size = atoi(argv[2]);
         num_workers = atoi(argv[3]);
         num_masters = atoi(argv[4]);
     }
 
+    buffer = (int *)malloc(sizeof(int) * max_buf_size);
 
-    buffer = (int*)malloc (sizeof(int) * max_buf_size);
-
-    //create master producer threads
+    // create master producer threads
     master_thread_id = (int *)malloc(sizeof(int) * num_masters);
     master_thread = (pthread_t *)malloc(sizeof(pthread_t) * num_masters);
 
-    for (i = 0; i < num_masters; i++){        
+    for (i = 0; i < num_masters; i++)
+    {
         master_thread_id[i] = i;
         pthread_create(&master_thread[i], NULL, generate_requests_loop, (void *)&master_thread_id[i]);
-    } 
-
-    //create worker consumer threads
-    worker_thread_id = (int*) malloc(sizeof(int) * num_workers);
-    worker_thread = (pthread_t*) malloc(sizeof(pthread_t) * num_workers);
-    for (i = 0; i < num_workers; i++){
-        worker_thread_id[i] = i;
-        pthread_create(&worker_thread[i], NULL, consume_item, (void*)&worker_thread_id[i]);
     }
 
-    //wait for all threads to complete
+    // create worker consumer threads
+    worker_thread_id = (int *)malloc(sizeof(int) * num_workers);
+    worker_thread = (pthread_t *)malloc(sizeof(pthread_t) * num_workers);
+    for (i = 0; i < num_workers; i++)
+    {
+        worker_thread_id[i] = i;
+        pthread_create(&worker_thread[i], NULL, consume_item, (void *)&worker_thread_id[i]);
+    }
 
-    for (i = 0; i < num_workers; i++) {
+    // wait for all threads to complete
+
+    for (i = 0; i < num_workers; i++)
+    {
         pthread_join(worker_thread[i], NULL);
         printf("worker %d joined\n", i);
     }
-    for (i = 0; i < num_masters; i++) {
+    for (i = 0; i < num_masters; i++)
+    {
         pthread_join(master_thread[i], NULL);
         printf("master %d joined\n", i);
     }
