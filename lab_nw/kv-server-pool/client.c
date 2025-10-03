@@ -9,17 +9,15 @@
 
 int main()
 {
+    int is_connected = 0;
+    int sock_fd;
+    struct sockaddr_in server_addr;
+    int portno;
     while (1)
     {
         printf("Enter a comamnd: ");
         char *cmd = (char *)malloc(256 * sizeof(char));
         scanf("%s", cmd);
-
-        int sock_fd;
-        int is_connected = 0;
-        struct sockaddr_in server_addr;
-        int portno;
-
         if (strcmp(cmd, "connect") == 0)
         {
             char *server_name = (char *)malloc(256);
@@ -30,7 +28,7 @@ int main()
                 printf("Already connected to server\n");
                 return 1;
             }
-            // printf("%s, %d", server_name, portno);
+            printf("Connecting to server %s at port %d\n", server_name, portno);
             struct hostent *server = gethostbyname(server_name);
             sock_fd = socket(AF_INET, SOCK_STREAM, 0);
             server_addr.sin_family = AF_INET;
@@ -43,12 +41,24 @@ int main()
                 return 1;
             }
             is_connected = 1;
-            printf("Connected to server %s at port %d\n", server_name, portno);
+            payload_t payload;
+            payload.cmd_type = CMD_CONNECT;
+            ssize_t bytes_written = send(sock_fd, &payload, sizeof(payload), 0);
+            if (bytes_written < 0) perror("send");
+            char response[256];
+            ssize_t bytes_read = recv(sock_fd, response, sizeof(response) - 1, 0);
+            if (bytes_read < 0) perror("recv");
+            response[bytes_read] = '\0';
+            printf("Server response: %s\n", response);
         }
         else if (strcmp(cmd, "disconnect") == 0)
         {
             payload_t payload;
             payload.cmd_type = CMD_DISCONNECT;
+            if (is_connected == 0) {
+                printf("Client not connected\n");
+                continue;
+            }
             ssize_t bytes_written = send(sock_fd, &payload, sizeof(payload), 0);
             if (bytes_written < 0)
             {
@@ -70,16 +80,19 @@ int main()
             payload_t payload;
             payload.cmd_type = CMD_CREATE;
             scanf("%d %d", &payload.key, &payload.value_size);
+            getchar();
+            char *value = (char *)malloc(sizeof(char) * (1 + payload.value_size));
+            fgets(value, 1 + payload.value_size, stdin);
+            if (is_connected == 0) {
+                printf("Client not connected\n");
+                continue;
+            }
             ssize_t bytes_written = send(sock_fd, &payload, sizeof(payload), 0);
             if (bytes_written < 0)
             {
                 perror("Send");
                 return 1;
             }
-            getchar();
-            char *value = (char *)malloc(sizeof(char) * (1 + payload.value_size));
-            fgets(value, 1 + payload.value_size, stdin);
-            // printf("Value to send: %s\n", value);
             char buffer[256];
             memset(buffer, 0, sizeof(buffer));
             ssize_t bytes_read = recv(sock_fd, buffer, sizeof(buffer) - 1, 0);
@@ -106,7 +119,10 @@ int main()
             payload_t payload;
             payload.cmd_type = CMD_READ;
             scanf("%d", &payload.key);
-            printf("%d\n", payload.key);
+            if (is_connected == 0) {
+                printf("Client not connected\n");
+                continue;
+            }
             ssize_t bytes_written = send(sock_fd, &payload, sizeof(payload), 0);
             if (bytes_written < 0)
             {
@@ -130,7 +146,6 @@ int main()
             {
                 perror("recv");
             }
-            // printf("Value size: %d\n", payload.value_size);
             char *buffer = (char *)malloc(sizeof(char) * (payload.value_size + 1));
             bytes_read = recv(sock_fd, buffer, payload.value_size, 0);
             if (bytes_read < 0)
@@ -146,15 +161,18 @@ int main()
             payload_t payload;
             payload.cmd_type = CMD_UPDATE;
             scanf("%d %d", &payload.key, &payload.value_size);
+            getchar();
+            char *value = (char *)malloc(sizeof(char) * (1 + payload.value_size));
+            fgets(value, 1 + payload.value_size, stdin);
+            if (is_connected == 0) {
+                printf("Client not connected\n");
+                continue;
+            }
             ssize_t bytes_written = send(sock_fd, &payload, sizeof(payload), 0);
             if (bytes_written < 0)
             {
                 perror("send");
             };
-            getchar();
-            char *value = (char *)malloc(sizeof(char) * (1 + payload.value_size));
-            fgets(value, 1 + payload.value_size, stdin);
-
             char response[256];
             ssize_t bytes_read = recv(sock_fd, response, sizeof(response) - 1, 0);
             if (bytes_read < 0)
@@ -180,6 +198,10 @@ int main()
             payload_t payload;
             payload.cmd_type = CMD_DELETE;
             scanf("%d", &payload.key);
+            if (is_connected == 0) {
+                printf("Client not connected\n");
+                continue;
+            }
             ssize_t bytes_written = send(sock_fd, &payload, sizeof(payload), 0);
             if (bytes_written < 0)
             {
@@ -196,7 +218,7 @@ int main()
         }
         else
         {
-            printf("HERE Invalid command\n");
+            printf("Invalid command\n");
         }
         free(cmd);
     }

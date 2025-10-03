@@ -8,7 +8,7 @@
 #include "types.h"
 #include <pthread.h>
 
-#define NO_OF_THREADS 5
+#define NO_OF_THREADS 1
 
 typedef struct __kv_node
 {
@@ -42,6 +42,7 @@ pthread_mutex_t fd_queue_lock;
 pthread_cond_t fd_queue_cond;
 
 void* handle_client(void* arg) {
+    int thread_id = *(int*)arg;
     while(1) {
         pthread_mutex_lock(&fd_queue_lock);
         while(fd_queue_head == NULL) {
@@ -54,6 +55,7 @@ void* handle_client(void* arg) {
         pthread_mutex_unlock(&fd_queue_lock);
         int client_fd = curr_fd_node->client_fd;
         int client_disconnected = 0;
+        printf("Thread %d is busy\n", thread_id);
         while (1)
         {
             if (client_disconnected) break;
@@ -67,6 +69,12 @@ void* handle_client(void* arg) {
 
             switch (payload.cmd_type)
             {
+                case CMD_CONNECT: 
+                    {
+                        char* msg = "Connected to server";
+                        send(client_fd, msg, strlen(msg), 0);
+                        break;
+                    }
                 case CMD_CREATE:
                     {
                         pthread_mutex_lock(&lock);
@@ -86,7 +94,7 @@ void* handle_client(void* arg) {
                                 break;
                             }
                             current = current->next;
-                        }
+                        } 
                         if (key_found)
                         {
                             available = 1;
@@ -108,11 +116,7 @@ void* handle_client(void* arg) {
                         new_node->next = NULL;
                         new_node->key = payload.key;
                         new_node->value = (char *)malloc(sizeof(char) * (payload.value_size + 1));
-                        // printf("<HERE\n");
                         ssize_t value_bytes_read = recv(client_fd, new_node->value, payload.value_size + 1, 0);
-                        // printf("value bytes read: %zd\n", value_bytes_read);
-                        // printf("value size: %d\n", payload.value_size);
-                        // printf("Value received: %s\n", new_node->value);
                         if (value_bytes_read < 0)
                         {
                             perror("recv");
@@ -124,7 +128,6 @@ void* handle_client(void* arg) {
                     }
                 case CMD_READ:
                     {
-                        // printf("Key to read: %d\n", payload.key);
                         pthread_mutex_lock(&lock);
                         while (available == 0) pthread_cond_wait(&cond, &lock);
                         available = 0;
@@ -153,8 +156,6 @@ void* handle_client(void* arg) {
                             int value_size = strlen(current->value);
                             memset(&payload, 0, sizeof(payload));
                             payload.value_size = value_size;
-                            // printf("Payload value size : %d\n", payload.value_size);
-                            // printf("Value: %s\n", current->value);
                             send(client_fd, &payload, sizeof(payload), 0);
                             send(client_fd, current->value, value_size, 0);
                             available = 1;
@@ -246,6 +247,7 @@ void* handle_client(void* arg) {
                         close(client_fd);
                         printf("Client disconnected\n");
                         client_disconnected = 1;
+                        printf("Thread %d is free\n", thread_id);
                         break;
                     }
                 default:
@@ -310,7 +312,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < NO_OF_THREADS; i++) {
         thread_pool[i].is_busy = 0;
         thread_pool[i].thread_no = i;
-        pthread_create(&thread_pool[i].tid, NULL, handle_client, NULL);
+        pthread_create(&thread_pool[i].tid, NULL, handle_client, &i);
     }
 
     while (1)

@@ -6,6 +6,7 @@
 #define CMD_UPDATE 3
 #define CMD_DELETE 4
 #define CMD_DISCONNECT 5
+#define CMD_CONNECT 6
 
 typedef struct __payload_t {
     int cmd_type;
