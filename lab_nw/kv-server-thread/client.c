@@ -9,7 +9,6 @@
 
 int main()
 {
-
     while (1)
     {
         printf("Enter a comamnd: ");
@@ -203,3 +202,4 @@ int main()
     }
     return 0;
 }
+
