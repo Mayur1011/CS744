@@ -1,0 +1,147 @@
+./maxcount2 filename1.txt filename2.txt 2 2 90
+[MAIN] Pool1 chunksize = 500
+[POOL1] 2 Threads created.
+[MAIN] Pool2 chunksize = 50
+[POOL2] 2 Threads created.
+------------------------------------------------------------
+[POOL1-THREAD 1] Start = 500 End = 1000 Local max = 9990
+[POOL1-THREAD 0] Start = 0 End = 500 Local max = 9998
+------------------------------------------------------------
+[POOL1] Global max = 9998
+[POOL1] Threshold = 8998
+[POOL1]: All threads done. 
+------------------------------------------------------------
+[POOL2-THREAD 0] Start = 0 End = 50 Local count = 4
+[POOL2-THREAD 1] Start = 50 End = 100 Local count = 4
+------------------------------------------------------------
+[POOL2] Global count = 8
+[POOL2]: All threads done.
+/////////////////////////////////////////////////////////////////////////
+
+./maxcount2 filename1.txt filename2.txt 2 3 90
+[MAIN] Pool1 chunksize = 500
+[POOL1] 2 Threads created.
+[MAIN] Pool2 chunksize = 33
+[POOL2] 3 Threads created.
+------------------------------------------------------------
+[POOL1-THREAD 0] Start = 0 End = 500 Local max = 9998
+[POOL1-THREAD 1] Start = 500 End = 1000 Local max = 9990
+------------------------------------------------------------
+[POOL1] Global max = 9998
+[POOL1] Threshold = 8998
+[POOL1]: All threads done. 
+------------------------------------------------------------
+[POOL2-THREAD 1] Start = 33 End = 66 Local count = 3
+[POOL2-THREAD 2] Start = 66 End = 100 Local count = 2
+[POOL2-THREAD 0] Start = 0 End = 33 Local count = 3
+------------------------------------------------------------
+[POOL2] Global count = 8
+[POOL2]: All threads done. 
+//////////////////////////////////////////////////////////
+
+./maxcount2 filename1.txt filename2.txt 3 2 90
+[MAIN] Pool1 chunksize = 333
+[POOL1] 3 Threads created.
+[MAIN] Pool2 chunksize = 50
+[POOL2] 2 Threads created.
+------------------------------------------------------------
+[POOL1-THREAD 1] Start = 333 End = 666 Local max = 9984
+[POOL1-THREAD 2] Start = 666 End = 1000 Local max = 9990
+[POOL1-THREAD 0] Start = 0 End = 333 Local max = 9998
+------------------------------------------------------------
+[POOL1] Global max = 9998
+[POOL1] Threshold = 8998
+[POOL1]: All threads done. 
+------------------------------------------------------------
+[POOL2-THREAD 0] Start = 0 End = 50 Local count = 4
+[POOL2-THREAD 1] Start = 50 End = 100 Local count = 4
+------------------------------------------------------------
+[POOL2] Global count = 8
+[POOL2]: All threads done.
+//////////////////////////////////////////////////////////////////
+
+./maxcount2 filename1.txt filename2.txt 3 3 90
+[MAIN] Pool1 chunksize = 333
+[POOL1] 3 Threads created.
+[MAIN] Pool2 chunksize = 33
+[POOL2] 3 Threads created.
+------------------------------------------------------------
+[POOL1-THREAD 1] Start = 333 End = 666 Local max = 9984
+[POOL1-THREAD 0] Start = 0 End = 333 Local max = 9998
+[POOL1-THREAD 2] Start = 666 End = 1000 Local max = 9990
+------------------------------------------------------------
+[POOL1] Global max = 9998
+[POOL1] Threshold = 8998
+[POOL1]: All threads done. 
+------------------------------------------------------------
+[POOL2-THREAD 2] Start = 66 End = 100 Local count = 2
+[POOL2-THREAD 0] Start = 0 End = 33 Local count = 3
+[POOL2-THREAD 1] Start = 33 End = 66 Local count = 3
+------------------------------------------------------------
+[POOL2] Global count = 8
+[POOL2]: All threads done. 
+
+
+/////////////////////////////////////////////////////////////////
+./maxcount2 filename1.txt filename2.txt 10 2 90
+[MAIN] Pool1 chunksize = 100
+[POOL1] 10 Threads created.
+[MAIN] Pool2 chunksize = 50
+[POOL2] 2 Threads created.
+------------------------------------------------------------
+[POOL1-THREAD 4] Start = 400 End = 500 Local max = 9984
+[POOL1-THREAD 8] Start = 800 End = 900 Local max = 9745
+[POOL1-THREAD 1] Start = 100 End = 200 Local max = 9723
+[POOL1-THREAD 2] Start = 200 End = 300 Local max = 9998
+[POOL1-THREAD 3] Start = 300 End = 400 Local max = 9934
+[POOL1-THREAD 6] Start = 600 End = 700 Local max = 9937
+[POOL1-THREAD 5] Start = 500 End = 600 Local max = 9922
+[POOL1-THREAD 9] Start = 900 End = 1000 Local max = 9990
+[POOL1-THREAD 7] Start = 700 End = 800 Local max = 9958
+[POOL1-THREAD 0] Start = 0 End = 100 Local max = 9952
+------------------------------------------------------------
+[POOL1] Global max = 9998
+[POOL1] Threshold = 8998
+[POOL1]: All threads done. 
+------------------------------------------------------------
+[POOL2-THREAD 0] Start = 0 End = 50 Local count = 4
+[POOL2-THREAD 1] Start = 50 End = 100 Local count = 4
+------------------------------------------------------------
+[POOL2] Global count = 8
+[POOL2]: All threads done. 
+
+///////////////////////////////////////////////////////////////
+./maxcount2 filename1.txt filename2.txt 10 10 90
+[MAIN] Pool1 chunksize = 100
+[POOL1] 10 Threads created.
+[MAIN] Pool2 chunksize = 10
+[POOL2] 10 Threads created.
+------------------------------------------------------------
+[POOL1-THREAD 0] Start = 0 End = 100 Local max = 9952
+[POOL1-THREAD 9] Start = 900 End = 1000 Local max = 9990
+[POOL1-THREAD 1] Start = 100 End = 200 Local max = 9723
+[POOL1-THREAD 2] Start = 200 End = 300 Local max = 9998
+[POOL1-THREAD 4] Start = 400 End = 500 Local max = 9984
+[POOL1-THREAD 7] Start = 700 End = 800 Local max = 9958
+[POOL1-THREAD 3] Start = 300 End = 400 Local max = 9934
+[POOL1-THREAD 5] Start = 500 End = 600 Local max = 9922
+[POOL1-THREAD 8] Start = 800 End = 900 Local max = 9745
+[POOL1-THREAD 6] Start = 600 End = 700 Local max = 9937
+------------------------------------------------------------
+[POOL1] Global max = 9998
+[POOL1] Threshold = 8998
+[POOL1]: All threads done. 
+------------------------------------------------------------
+[POOL2-THREAD 4] Start = 40 End = 50 Local count = 1
+[POOL2-THREAD 5] Start = 50 End = 60 Local count = 2
+[POOL2-THREAD 7] Start = 70 End = 80 Local count = 1
+[POOL2-THREAD 9] Start = 90 End = 100 Local count = 0
+[POOL2-THREAD 3] Start = 30 End = 40 Local count = 0
+[POOL2-THREAD 2] Start = 20 End = 30 Local count = 0
+[POOL2-THREAD 1] Start = 10 End = 20 Local count = 2
+[POOL2-THREAD 0] Start = 0 End = 10 Local count = 1
+[POOL2-THREAD 6] Start = 60 End = 70 Local count = 1
+[POOL2-THREAD 8] Start = 80 End = 90 Local count = 0
+------------------------------------------------------------
+[POOL2] Global count = 8
+[POOL2]: All threads done. 

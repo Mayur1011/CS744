@@ -24,7 +24,7 @@ int main()
     sa.sa_handler = alarm_handler;
     sa.sa_flags = 0;
 
-    // MASKING is all about DO NOT DISTURB (like block the following signals when alarm_handler is running)'
+    // MASKING is all about DO NOT DISTURB (like block the following signals when alarm_handler is running)
     sigemptyset(&sa.sa_mask);
     // sigaddset(&sa.sa_mask, SIGINT);
 

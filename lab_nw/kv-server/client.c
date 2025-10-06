@@ -107,7 +107,6 @@ int main()
             payload_t payload;
             payload.cmd_type = CMD_READ;
             scanf("%d", &payload.key);
-            printf("%d\n", payload.key);
             ssize_t bytes_written = send(sock_fd, &payload, sizeof(payload), 0);
             if (bytes_written < 0)
             {
@@ -120,9 +119,9 @@ int main()
                 perror("recv");
             }
             response[bytes_read] = '\0';
-            printf("Server response: %s\n", response);
             if (strcmp(response, "OK") != 0)
             {
+                printf("Server response: %s\n", response);
                 continue;
             }
             memset(&payload, 0, sizeof(payload));

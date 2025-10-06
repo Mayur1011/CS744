@@ -17,7 +17,7 @@ typedef struct __kv_node
 int main(int argc, char *argv[])
 {
 
-    struct hostent *server = gethostbyname(argv[1]);
+    // struct hostent *server = gethostbyname(argv[1]);
     int portno = atoi(argv[2]);
 
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -31,7 +31,8 @@ int main(int argc, char *argv[])
     bzero((char *)&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(portno);
-    bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    // bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
 
     int opt = 1;
     if (setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
@@ -86,157 +87,161 @@ int main(int argc, char *argv[])
                 perror("recv");
             }
 
-            printf("Command type: %d\n", payload.cmd_type);
-            printf("Key: %d\n", payload.key);
-            printf("Value size: %d\n", payload.value_size);
+            // printf("Command type: %d\n", payload.cmd_type);
+            // printf("Key: %d\n", payload.key);
+            // printf("Value size: %d\n", payload.value_size);
 
             switch (payload.cmd_type)
             {
-                case CMD_CREATE:
+            case CMD_CREATE:
+            {
+                kv_node_t *current = head;
+                int key_found = 0;
+                while (current != NULL)
+                {
+                    if (current->key == payload.key)
                     {
-                        kv_node_t *current = head;
-                        int key_found = 0;
-                        while (current != NULL)
-                        {
-                            if (current->key == payload.key)
-                            {
-                                key_found = 1;
-                                break;
-                            }
-                            current = current->next;
-                        }
-                        if (key_found) {
-                            char *msg = "Key already exists";
-                            send(client_fd, msg, strlen(msg), 0);
-                            break;
-                        }
-                        else {
-                            char *msg = "Key-value pair created";
-                            send(client_fd, msg, strlen(msg), 0);
-                        }
-                        kv_node_t *new_node = (kv_node_t *)malloc(sizeof(kv_node_t));
-                        if (head == NULL) head = new_node;
-                        else tail->next = new_node;
-                        tail = new_node;
-                        new_node->next = NULL;
-                        new_node->key = payload.key;
-                        new_node->value = (char *)malloc(sizeof(char) * (payload.value_size + 1));
-                        ssize_t value_bytes_read = recv(client_fd, new_node->value, payload.value_size + 1, 0);
-                        if (value_bytes_read < 0)
-                        {
-                            perror("recv");
-                        }
-                        new_node->value[payload.value_size] = '\0';
+                        key_found = 1;
                         break;
                     }
-                case CMD_READ:
+                    current = current->next;
+                }
+                if (key_found)
+                {
+                    char *msg = "Key already exists";
+                    send(client_fd, msg, strlen(msg), 0);
+                    break;
+                }
+                else
+                {
+                    char *msg = "Key-value pair created";
+                    send(client_fd, msg, strlen(msg), 0);
+                }
+                kv_node_t *new_node = (kv_node_t *)malloc(sizeof(kv_node_t));
+                if (head == NULL)
+                    head = new_node;
+                else
+                    tail->next = new_node;
+                tail = new_node;
+                new_node->next = NULL;
+                new_node->key = payload.key;
+                new_node->value = (char *)malloc(sizeof(char) * (payload.value_size + 1));
+                ssize_t value_bytes_read = recv(client_fd, new_node->value, payload.value_size + 1, 0);
+                if (value_bytes_read < 0)
+                {
+                    perror("recv");
+                }
+                new_node->value[payload.value_size] = '\0';
+                break;
+            }
+            case CMD_READ:
+            {
+                // printf("Key to read: %d\n", payload.key);
+                kv_node_t *current = head;
+                int key_found = 0;
+                while (current != NULL)
+                {
+                    if (current->key == payload.key)
                     {
-                        printf("Key to read: %d\n", payload.key);
-                        kv_node_t *current = head;
-                        int key_found = 0;
-                        while (current != NULL)
-                        {
-                            if (current->key == payload.key)
-                            {
-                                key_found = 1;
-                                break;
-                            }
-                            current = current->next;
-                        }
-                        if (key_found == 0)
-                        {
-                            char *msg = "Key not found";
-                            send(client_fd, msg, strlen(msg), 0);
-                        }
-                        else
-                    {
-                            send(client_fd, "OK", 2, 0);
-                            int value_size = strlen(current->value);
-                            memset(&payload, 0, sizeof(payload));
-                            payload.value_size = value_size;
-                            printf("Payload value size : %d\n", payload.value_size);
-                            printf("Value: %s\n", current->value);
-                            send(client_fd, &payload, sizeof(payload), 0);
-                            send(client_fd, current->value, value_size, 0);
-                        }
+                        key_found = 1;
                         break;
                     }
-                case CMD_DELETE:
+                    current = current->next;
+                }
+                if (key_found == 0)
+                {
+                    char *msg = "Key not found";
+                    send(client_fd, msg, strlen(msg), 0);
+                }
+                else
+                {
+                    send(client_fd, "OK", 2, 0);
+                    int value_size = strlen(current->value);
+                    memset(&payload, 0, sizeof(payload));
+                    payload.value_size = value_size;
+                    // printf("Payload value size : %d\n", payload.value_size);
+                    // printf("Value: %s\n", current->value);
+                    send(client_fd, &payload, sizeof(payload), 0);
+                    send(client_fd, current->value, value_size, 0);
+                }
+                break;
+            }
+            case CMD_DELETE:
+            {
+                kv_node_t *current = head;
+                kv_node_t *previous = NULL;
+                int deleted = 0;
+                while (current != NULL)
+                {
+                    if (current->key == payload.key)
                     {
-                        kv_node_t *current = head;
-                        kv_node_t *previous = NULL;
-                        int deleted = 0;
-                        while (current != NULL)
+                        if (current == head)
                         {
-                            if (current->key == payload.key)
-                            {
-                                if (current == head)
-                                {
-                                    head = current->next;
-                                }
-                                else
-                            {
-                                    previous->next = current->next;
-                                }
-                                free(current);
-                                char* msg = "Key-value pair deleted";
-                                send(client_fd, msg, strlen(msg), 0);
-                                deleted = 1;
-                                break;
-                            }
-                            previous = current;
-                            current = current->next;
-                        }
-                        if (deleted == 0)
-                            send(client_fd, "Key not found", 13, 0);
-                        break;
-                    }
-                case CMD_UPDATE:
-                    {
-                        kv_node_t *current = head;
-                        int key_found = 0;
-                        while (current != NULL)
-                        {
-                            if (current->key == payload.key)
-                            {
-                                key_found = 1;
-                                break;
-                            }
-                        }
-                        if (key_found == 0)
-                        {
-                            char *msg = "Key not found";
-                            send(client_fd, msg, strlen(msg), 0);
+                            head = current->next;
                         }
                         else
                         {
-                            char* msg = "Updated value";
-                            send(client_fd, msg, strlen(msg), 0);
-                            free(current->value);
-                            current->value = (char *)malloc(sizeof(char) * (payload.value_size + 1));
-                            ssize_t value_bytes_read = recv(client_fd, current->value, 1 + payload.value_size, 0);
-                            if (value_bytes_read < 0)
-                            {
-                                perror("recv");
-                            }
+                            previous->next = current->next;
                         }
-                        break;
-                    }
-                case CMD_DISCONNECT:
-                    {
-                        char *msg = "Disconnected from server";
+                        free(current);
+                        char *msg = "Key-value pair deleted";
                         send(client_fd, msg, strlen(msg), 0);
-                        close(client_fd);
-                        client_present = 0;
-                        printf("Client disconnected\n");
+                        deleted = 1;
                         break;
                     }
-                default:
+                    previous = current;
+                    current = current->next;
+                }
+                if (deleted == 0)
+                    send(client_fd, "Key not found", 13, 0);
+                break;
+            }
+            case CMD_UPDATE:
+            {
+                kv_node_t *current = head;
+                int key_found = 0;
+                while (current != NULL)
+                {
+                    if (current->key == payload.key)
                     {
-                        char *msg = "Invalid command";
-                        send(client_fd, msg, strlen(msg), 0);
+                        key_found = 1;
                         break;
                     }
+                }
+                if (key_found == 0)
+                {
+                    char *msg = "Key not found";
+                    send(client_fd, msg, strlen(msg), 0);
+                }
+                else
+                {
+                    char *msg = "Updated value";
+                    send(client_fd, msg, strlen(msg), 0);
+                    free(current->value);
+                    current->value = (char *)malloc(sizeof(char) * (payload.value_size + 1));
+                    ssize_t value_bytes_read = recv(client_fd, current->value, 1 + payload.value_size, 0);
+                    if (value_bytes_read < 0)
+                    {
+                        perror("recv");
+                    }
+                }
+                break;
+            }
+            case CMD_DISCONNECT:
+            {
+                char *msg = "Disconnected from server";
+                send(client_fd, msg, strlen(msg), 0);
+                close(client_fd);
+                client_present = 0;
+                printf("Client disconnected\n");
+                break;
+            }
+            default:
+            {
+                char *msg = "Invalid command";
+                send(client_fd, msg, strlen(msg), 0);
+                break;
+            }
             }
         }
     }
