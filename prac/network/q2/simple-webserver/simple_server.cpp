@@ -1,0 +1,209 @@
+#include "http_server.hh"
+#include <cstdlib>
+
+// mutex and condition variable for the thread pool
+pthread_mutex_t queueMutex;
+pthread_cond_t queueCondFull;
+pthread_cond_t queueCondEmpty;
+
+// queue for the thread pool
+queue<int> client_queue;
+atomic<bool> running = {true};
+
+struct sigaction act;
+
+void *connection_handler(void *args)
+{
+    while (running)
+    {
+        pthread_mutex_lock(&queueMutex);
+        while (client_queue.empty() && running)
+        {
+            pthread_cond_wait(&queueCondEmpty, &queueMutex);
+        }
+        if (!running)
+        {
+            pthread_mutex_unlock(&queueMutex);
+            continue;
+        }
+        int newsockfd = client_queue.front();
+        client_queue.pop();
+        pthread_cond_signal(&queueCondFull);
+        pthread_mutex_unlock(&queueMutex);
+
+        int n;
+        string request, response;
+        char buffer[HEADER_MAX];
+
+        // read and write to the socket
+        n = read(newsockfd, buffer, HEADER_MAX - 1);
+        if (n < 0)
+        {
+#if FAULT_EXIT
+            cerr << "ERROR reading from socket" << endl;
+            exit(EXIT_FAILURE);
+#endif
+        }
+        else if (n == 0)
+        {
+#if SANITY_CHECK
+            cout << "Client disconnected!!" << endl;
+#endif
+        }
+        else
+        {
+            /* looking for the end-of-header (eoh) CRLF CRLF substring; if
+               not found, then the header size is too large */
+            char *eoh = strstr(buffer, "\r\n\r\n");
+            if (eoh == NULL)
+            {
+                cerr << "ERROR: Header size too large" << endl;
+                exit(EXIT_FAILURE);
+            }
+            else
+            {
+#if SHOW_HEADER
+                cout << "Request:" << endl
+                     << buffer << endl;
+#endif
+
+                request = string(buffer);
+                response = handle_request(request);
+
+#if SHOW_OUTPUT
+                cout << "Response: " << endl
+                     << response << endl;
+#endif
+
+                n = write(newsockfd, response.c_str(), strlen(response.c_str()));
+                if (n < 0)
+                {
+#if FAULT_EXIT
+                    cerr << "ERROR writing to socket" << endl;
+                    exit(EXIT_FAILURE);
+#endif
+                }
+            }
+        }
+        close(newsockfd);
+#if SANITY_CHECK
+        cout << "Client disconnected!!" << endl;
+#endif
+    }
+
+    return NULL;
+}
+
+void int_handler(int p)
+{
+    running = false;
+    cout << "\nThe server is shutting down!!" << endl;
+    pthread_cond_broadcast(&queueCondEmpty);
+}
+
+int main(int argc, char *argv[])
+{
+    int sockfd; // file descriptor for the listen socket
+    pthread_t thread_id[THREAD_MAX];
+
+    socklen_t clilen;
+    struct sockaddr_in serv_addr, cli_addr;
+
+    act.sa_handler = int_handler; // set signal handler for parent
+
+    sigaction(SIGINT, &act, 0); // set interrupt signal handler for parent
+
+    // initialize mutex and condition variables
+    pthread_mutex_init(&queueMutex, NULL);
+    pthread_cond_init(&queueCondFull, NULL);
+    pthread_cond_init(&queueCondEmpty, NULL);
+
+    // create a socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0)
+    {
+        cerr << "ERROR opening socket" << endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // ready the socket address for binding
+    bzero((char *)&serv_addr, sizeof(serv_addr));
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons(PORT);
+
+    int opt = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    {
+        perror("setsockopt");
+        exit(EXIT_FAILURE);
+    }
+
+    // bind the socket to the address
+    if (bind(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        perror("bind");
+        exit(EXIT_FAILURE);
+    }
+
+    listen(sockfd, QUEUE_MAX);
+    clilen = sizeof(cli_addr);
+    cout << "Server started!! "
+         << "pid: " << getpid() << endl
+         << "Listening on port " << PORT << endl
+         << "To stop the server, press Ctrl+C" << endl;
+
+    // creating threads
+    for (int i = 0; i < THREAD_MAX; i++)
+    {
+        if (pthread_create(&thread_id[i], NULL, &connection_handler, NULL) != 0)
+        {
+            cerr << "Error: Could not create thread " << i << endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    do
+    {
+        // accept a connection
+        int newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
+        if (!running)
+        {
+            break;
+        }
+        else if (newsockfd < 0)
+        {
+            cerr << "ERROR on accept" << endl;
+            exit(EXIT_FAILURE);
+        }
+        else
+        {
+            pthread_mutex_lock(&queueMutex);
+            while (client_queue.size() == QUEUE_MAX)
+            {
+                pthread_cond_wait(&queueCondFull, &queueMutex);
+            }
+#if SANITY_CHECK
+            cout << "Connection accepted!!" << endl;
+#endif
+            client_queue.push(newsockfd);
+            pthread_cond_signal(&queueCondEmpty);
+            pthread_mutex_unlock(&queueMutex);
+        }
+    } while (running);
+
+    for (int j = 0; j < THREAD_MAX; j++)
+    {
+        pthread_join(thread_id[j], NULL);
+    }
+
+    pthread_mutex_destroy(&queueMutex);
+    pthread_cond_destroy(&queueCondFull);
+    pthread_cond_destroy(&queueCondEmpty);
+
+    close(sockfd);
+
+    cout << "Server stopped!!" << endl;
+
+    return 0;
+}

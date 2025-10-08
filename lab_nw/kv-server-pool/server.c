@@ -10,13 +10,13 @@
 
 #define NO_OF_THREADS 10
 
-typedef struct __kv_node
-{
+typedef struct __kv_node {
     int key;
     char *value;
     struct __kv_node *next;
 } kv_node_t;
 
+// Useless btw
 typedef struct {
     pthread_t tid;
     int is_busy;
