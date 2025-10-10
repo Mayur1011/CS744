@@ -2,13 +2,15 @@
 #include <pthread.h>
 
 pthread_mutex_t lock;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond;
 int turn = 0;
 
-void* print_thread(void* arg) {
-    int id = *((int*) arg);
+void *print_thread(void *arg)
+{
+    int id = *((int *)arg);
     pthread_mutex_lock(&lock);
-    while(turn != id) {
+    while (turn != id)
+    {
         pthread_cond_wait(&cond, &lock);
     }
     printf("Hello from thread %d\n", id);
@@ -18,18 +20,22 @@ void* print_thread(void* arg) {
     return NULL;
 }
 
-int main() {
+int main()
+{
     pthread_t thread[10];
     int value[10];
 
     pthread_mutex_init(&lock, NULL);
+    pthread_cond_init(&cond, NULL);
 
-    for (int i = 0; i < 10; i++ ) {
+    for (int i = 0; i < 10; i++)
+    {
         value[i] = i;
-        pthread_create(&thread[i], NULL, print_thread, (void*) &value[i]);
+        pthread_create(&thread[i], NULL, print_thread, (void *)&value[i]);
     }
 
-    for (int i = 0; i < 10; i++ ) {
+    for (int i = 0; i < 10; i++)
+    {
         pthread_join(thread[i], NULL);
     }
 

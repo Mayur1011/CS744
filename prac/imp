@@ -3,6 +3,7 @@
 condition vars
 Always check for missed signal
 wait releases the lock and reacquires it when unblocked
+ALways check for ambiguous workflow
 
 
 semaphores
