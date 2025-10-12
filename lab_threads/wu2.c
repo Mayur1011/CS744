@@ -10,9 +10,7 @@ void *print_thread(void *arg)
     int id = *((int *)arg);
     pthread_mutex_lock(&lock);
     while (turn != id)
-    {
         pthread_cond_wait(&cond, &lock);
-    }
     printf("Hello from thread %d\n", id);
     turn++;
     pthread_cond_broadcast(&cond);
@@ -35,9 +33,7 @@ int main()
     }
 
     for (int i = 0; i < 10; i++)
-    {
         pthread_join(thread[i], NULL);
-    }
 
     printf("I am the main thread\n");
     return 0;

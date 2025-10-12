@@ -35,7 +35,7 @@ int main()
             sock_fd = socket(AF_INET, SOCK_STREAM, 0);
             server_addr.sin_family = AF_INET;
             server_addr.sin_port = htons(portno);
-            bcopy((char *)server->h_addr, (char *)&server_addr.sin_addr.s_addr, server->h_length);
+            bcopy((char *)server->h_addr_list[0], (char *)&server_addr.sin_addr.s_addr, server->h_length);
             if (connect(sock_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
             {
                 perror("connect");
@@ -202,4 +202,3 @@ int main()
     }
     return 0;
 }
-
