@@ -1,18 +1,10 @@
-
-
 condition vars
 Always check for missed signal
 wait releases the lock and reacquires it when unblocked
 ALways check for ambiguous workflow
 
-
 semaphores
 wait blocks the thread and doesnt releases the lock
 
-
-
-
-
 server-client
 always initialize the buffer and variable
-

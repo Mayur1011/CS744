@@ -10,8 +10,8 @@
 
 int main (int argc, char* argv[]) {
 
-    int portno = atoi(argv[2]);
     struct hostent* server = gethostbyname(argv[1]);
+    int portno = atoi(argv[2]);
     // char* server_ip = argv[1];
     
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);

@@ -18,16 +18,12 @@ void *print_thread_message(void *arg)
     while (1)
     {
         while (start_thread != thread_num)
-            pthread_cond_wait(thread_num == 0 ? &cond0 : thread_num == 1 ? &cond1
-                                                                         : &cond2,
-                              &lock);
+            pthread_cond_wait(thread_num == 0 ? &cond0 : thread_num == 1 ? &cond1 : &cond2, &lock);
         printf("I am thread %d\n", thread_num);
         fflush(stdout);
         start_thread = (start_thread + 1) % N;
-        pthread_cond_signal(thread_num == 0 ? &cond1 : thread_num == 1 ? &cond2
-                                                                       : &cond0);
+        pthread_cond_signal(thread_num == 0 ? &cond1 : thread_num == 1 ? &cond2 : &cond0);
     }
-
     pthread_mutex_unlock(&lock);
     return NULL;
 }
@@ -48,9 +44,7 @@ int main()
 
     // Create N threads
     for (int i = 0; i < N; i++)
-    {
         pthread_create(&threads[i], NULL, print_thread_message, &thread_nums[i]);
-    }
     usleep(500);
     start_thread = 0;
     pthread_cond_signal(&cond0);
