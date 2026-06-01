@@ -1,8 +1,12 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+
+#include "helper.h"
 #include "redirection.h"
-#include "stdio.h"
-#include "unistd.h"
-#include "sys/wait.h"
-#include "fcntl.h"
 
 int checkRedirectionMode(char **tokens)
 {
@@ -56,7 +60,7 @@ void executeStdoutAppend(char **tokens, const char *outputFile)
 
     if (execvp(tokens[0], tokens) == -1)
     {
-      printError(tokens[0]);
+      printCommandNotFoundError(tokens[0]);
       exit(1);
     }
   }
@@ -87,7 +91,7 @@ void executeStdoutRedirection(char **tokens, const char *outputFile)
 
     if (execvp(tokens[0], tokens) == -1)
     {
-      printError(tokens[0]);
+      printCommandNotFoundError(tokens[0]);
       exit(1);
     }
   }

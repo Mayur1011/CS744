@@ -1,0 +1,30 @@
+Your list of additions (pipelines, history, and logical operators like && or ||) is already excellent. Pipelines in particular are a classic systems programming challenge that interviewers love to see.
+
+To elevate this from a basic lab assignment into a standout, resume-worthy project, you should focus on system-level edge cases and robust parsing. Here is a breakdown of what you can add or improve:
+
+1. Critical Missing Features (Immediate Next Steps)
+The cd command: A shell is practically unusable without cd. You cannot implement cd using fork and execvp because it needs to change the directory of the shell process itself. You must implement it as a built-in command using the chdir() system call.
+Fix Memory Leaks: In C projects, being "Valgrind clean" is a massive flex. Currently, when updateBackgroundJobsList removes a node, it just unlinks it. You need to actually free currentNode->job.commandTokens (all the strings inside it and the array itself) and then free(currentNode).
+2. Job Control & Signals (Interview Favorites)
+Implementing true job control shows deep understanding of OS process groups.
+
+Signal Handling: If you press Ctrl+C in your shell right now, it kills your shell. A real shell catches SIGINT and ignores it, but forwards it to running foreground child processes.
+Process Suspension: Handle Ctrl+Z (SIGTSTP). It should suspend the current foreground task and push it into your bgJobs list with a status of "Stopped".
+Foreground / Background commands: Add fg <job_id> and bg <job_id> commands to bring background or stopped jobs to the foreground, using kill(pid, SIGCONT) and waitpid(..., WUNTRACED).
+3. Advanced Parsing (Moving Beyond strtok)
+Your current splitCommandIntoTokens uses spaces to split strings. This is a common starting point but breaks easily.
+
+Handling Quotes: Right now, echo "hello world" sends three tokens: echo, "hello, and world". A real shell parser groups everything inside quotes into a single token. Adding a custom finite-state machine parser instead of strtok is a great resume talking point.
+Variable Expansion: Handle environment variables. If a user types echo $PATH or echo $? (to get the exit code of the last command), your parser should expand it using getenv() before executing.
+4. Advanced Redirects
+You currently handle > and >>. To make it fully posix-compliant for I/O:
+
+Standard Input: Implement < using open(_, O_RDONLY) and dup2(fd, STDIN_FILENO).
+Standard Error: Implement 2> to redirect stderr, and optionally 2>&1 to merge stderr into stdout.
+5. Architectural Improvements
+As you add pipelines and &&, your evalCommand function will become a massive chain of if/else statements.
+
+Abstract Syntax Tree (AST): Separate your shell into a Parser and an Executor. Instead of executing as you parse, have the parser return a structured data type (like a CommandTree struct) that describes pipes, redirects, and arguments. Then write an executor that just traverses that tree. This is how real production shells (and compilers) are designed.
+How to pitch this on a resume eventually:
+
+"Developed a custom POSIX-like Unix shell in C. Designed an AST-based parser to handle complex quoting and variable expansion. Implemented comprehensive process management utilizing fork/exec/wait, including foreground/background job control, signal handling (SIGINT/SIGTSTP), and multi-stage piped commands. Ensured zero memory leaks verifie

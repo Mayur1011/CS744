@@ -1,5 +1,8 @@
-#include "helper.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "helper.h"
 
 char **splitCommandIntoTokens(const char *command, int *numTokens)
 {
@@ -36,6 +39,21 @@ char **splitCommandIntoTokens(const char *command, int *numTokens)
   free(commandCopy);
 
   return tokens;
+}
+
+int getNoOfTokens(char **tokens)
+{
+  int count = 0;
+  while (tokens[count] != NULL)
+    count++;
+  return count;
+}
+
+void freeTokens(char **tokens, int noOfTokens)
+{
+  for (int i = 0; i < noOfTokens; i++)
+    free(tokens[i]);
+  free(tokens);
 }
 
 void printCommandNotFoundError(const char *command)

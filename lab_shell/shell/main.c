@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <readline/readline.h>
+#include <sys/wait.h>
 
 #include "eval.h"
-#include "completion.h"
 #include "helper.h"
+#include "completion.h"
 #include "redirection.h"
+
+char *PATH_ENV_VAR = "/usr/local/bin:/usr/bin";
 
 int main(int argc, char *argv[])
 {
@@ -16,9 +19,18 @@ int main(int argc, char *argv[])
   rl_attempted_completion_function = commandCompletion;
 
   char *command = NULL;
+  initializeBackgroundJobsList();
 
   while (1)
   {
+    while (1)
+    {
+      int childProcessId = waitpid(-1, NULL, WNOHANG);
+      if (childProcessId <= 0)
+        break;
+      printJobCompletionMessage(childProcessId);
+      updateBackgroundJobsList(childProcessId);
+    }
     char *currentDir = getcwd(NULL, 0);
     if (currentDir != NULL)
     {
@@ -29,6 +41,15 @@ int main(int argc, char *argv[])
     }
     else
       command = readline("$ ");
+
+    while (1)
+    {
+      int childProcessId = waitpid(-1, NULL, WNOHANG);
+      if (childProcessId <= 0)
+        break;
+      printJobCompletionMessage(childProcessId);
+      updateBackgroundJobsList(childProcessId);
+    }
 
     if (command == NULL)
       break;
